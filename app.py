@@ -16,13 +16,24 @@ st.set_page_config(
 # ============================================================
 
 st.title("🩺 ASTRA™")
-st.subheader("AI-Supported Structured Thinking in Anaesthesia")
+st.subheader("AI-Supported Structured Thinking & Reasoning in Anaesthesia")
 st.markdown("### Excellence in Clinical Cognition")
+
+st.markdown("""
+### Clinical Intelligence Simulator  
+Not a chatbot. A cognition engine.
+
+Built for:
+- Consultant crisis simulation  
+- PG viva mastery  
+- Clinical reasoning refinement  
+- MCQ and vignette assessment  
+""")
 
 st.markdown("---")
 
 # ============================================================
-# SIDEBAR – USER API KEY
+# SIDEBAR – USER API KEY (BYOK SYSTEM)
 # ============================================================
 
 st.sidebar.title("🔑 Gemini API Key")
@@ -43,7 +54,7 @@ if not api_key:
 # Configure Gemini
 genai.configure(api_key=api_key)
 
-# Create model (stable version)
+# Create stable model
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 # ============================================================
@@ -62,6 +73,16 @@ mode = st.selectbox(
 )
 
 clinical_input = st.text_area("Enter Clinical Scenario:", height=200)
+
+# ============================================================
+# SAFE GENERATION FUNCTION
+# ============================================================
+
+def generate_response(prompt):
+    response = model.generate_content(
+        contents=[{"role": "user", "parts": [prompt]}]
+    )
+    return response.text
 
 # ============================================================
 # CONSULTANT RAPID MODE
@@ -86,12 +107,12 @@ Provide:
 """
 
         with st.spinner("Analyzing scenario..."):
-            response = model.generate_content(prompt)
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
 
 # ============================================================
-# PG TEACHING MODE (INTERACTIVE)
+# PG TEACHING MODE
 # ============================================================
 
 elif mode == "PG Teaching Mode" and clinical_input:
@@ -111,8 +132,7 @@ Generate 3 structured probing questions only.
 Do NOT provide answers.
 """
 
-        response = model.generate_content(prompt)
-        st.session_state.pg_questions = response.text
+        st.session_state.pg_questions = generate_response(prompt)
         st.session_state.pg_feedback = None
 
     if st.session_state.pg_questions:
@@ -139,8 +159,7 @@ Give:
 - Score out of 10
 """
 
-            feedback = model.generate_content(feedback_prompt)
-            st.session_state.pg_feedback = feedback.text
+            st.session_state.pg_feedback = generate_response(feedback_prompt)
 
     if st.session_state.pg_feedback:
         st.markdown(st.session_state.pg_feedback)
@@ -166,8 +185,8 @@ Evaluate strengths, reasoning gaps,
 and rewrite to consultant level.
 """
 
-        response = model.generate_content(prompt)
-        st.markdown(response.text)
+        output = generate_response(prompt)
+        st.markdown(output)
 
 # ============================================================
 # MCQ GENERATOR MODE
@@ -190,11 +209,11 @@ Each must include:
 - Explanation
 """
 
-        response = model.generate_content(prompt)
-        st.markdown(response.text)
+        output = generate_response(prompt)
+        st.markdown(output)
 
 # ============================================================
-# CLINICAL VIGNETTE MODE (INTERACTIVE)
+# CLINICAL VIGNETTE MODE
 # ============================================================
 
 elif mode == "Clinical Vignette Mode" and clinical_input:
@@ -217,8 +236,7 @@ Present first step and ask:
 Do NOT reveal answer yet.
 """
 
-        response = model.generate_content(prompt)
-        st.session_state.vignette_step = response.text
+        st.session_state.vignette_step = generate_response(prompt)
         st.session_state.vignette_feedback = None
 
     if st.session_state.vignette_step:
@@ -244,8 +262,7 @@ Now:
 3. Continue vignette progression
 """
 
-            feedback = model.generate_content(feedback_prompt)
-            st.session_state.vignette_feedback = feedback.text
+            st.session_state.vignette_feedback = generate_response(feedback_prompt)
 
     if st.session_state.vignette_feedback:
         st.markdown(st.session_state.vignette_feedback)
