@@ -1,5 +1,6 @@
 import streamlit as st
-from google import genai
+import google.generativeai as genai
+import os
 
 # ============================================================
 # PAGE CONFIG
@@ -21,34 +22,22 @@ body {
     background: linear-gradient(135deg, #050d1a, #0c1a2e);
     color: white;
 }
-
 h1 {
     color: #00f7ff;
-    text-shadow: 0 0 10px #00f7ff, 0 0 20px #00f7ff;
+    text-shadow: 0 0 10px #00f7ff;
 }
-
 h2, h3 {
     color: #ff00c8;
-    text-shadow: 0 0 6px #ff00c8;
 }
-
 .stButton button {
     background: linear-gradient(135deg, #00f7ff, #008cff);
-    border-radius: 12px;
+    border-radius: 10px;
     font-weight: bold;
     color: black;
 }
-
-.stTextArea textarea, .stTextInput input {
-    background-color: #0b1b33;
-    color: white;
-    border-radius: 12px;
-    border: 1px solid #00f7ff;
-}
-
 .footer {
     text-align:center;
-    margin-top:50px;
+    margin-top:40px;
     font-size:0.8rem;
     color:#94a3b8;
 }
@@ -59,20 +48,9 @@ h2, h3 {
 # HEADER
 # ============================================================
 
-st.title("🩺 ASTRA")
-st.subheader("AI-Supported Structured Thinking & Reasoning in Anaesthesia")
-st.markdown("### eXcellence in Clinical Cognition")
-
-st.markdown("""
-### Clinical Intelligence Simulator  
-Not a chatbot. A cognition engine.
-
-Built for:
-- Consultant crisis simulation
-- PG viva mastery
-- Clinical reasoning refinement
-- MCQ and vignette assessment
-""")
+st.title("🩺 ASTRA™")
+st.subheader("AI-Supported Structured Thinking in Anaesthesia")
+st.markdown("### Excellence in Clinical Cognition")
 
 st.markdown("---")
 
@@ -83,45 +61,19 @@ st.markdown("---")
 with st.expander("About the Developer - Dr Bhavna Gupta"):
 
     st.markdown("""
-### Dr Bhavna Gupta  
-Associate Professor - Anaesthesiology  
+**Associate Professor – Anaesthesiology**
 
-Research Mentor | AI in Medical Education Advocate | Academic Strategist  
+• 175+ Peer-Reviewed Publications  
+• 15+ Book Chapters  
+• Author of 2 Textbooks  
+• National Young Researcher Awardee  
+• Dr KPR Award Recipient  
+• Prof PK Singh Young Anaesthesiologist Awardee  
+• National Essay Competition Winner  
 
----
-
-#### Academic Impact
-- 175+ Peer-Reviewed Publications  
-- 15+ Book Chapters  
-- Author of 2 Textbooks in Anaesthesia  
-- Active Research Mentor  
-
----
-
-#### National Recognition
-- National Young Researcher Awardee  
-- Dr KPR Award Recipient  
-- Prof PK Singh Young Anaesthesiologist Awardee  
-- National Best Essay Competition Winner  
-
----
-
-#### Academic Leadership
-- Faculty on Artificial Intelligence in Medical Research  
-- Advocate for Ethical AI Integration  
-- Mentor in Structured Clinical Reasoning  
-
----
-
-#### Vision Behind ASTRA
-ASTRA bridges traditional clinical wisdom with structured artificial intelligence reasoning.
-
-Built on:
-1. Structured Thinking  
-2. Ethical AI Use  
-3. Consultant-Level Precision  
-
-The aim is not automation - but elevation of clinical cognition.
+**Vision:**  
+ASTRA bridges traditional clinical wisdom with structured AI reasoning.
+The aim is not automation — but elevation of clinical cognition.
 """)
 
 st.markdown("---")
@@ -130,14 +82,30 @@ st.markdown("---")
 # API KEY
 # ============================================================
 
-st.sidebar.title("Gemini API Key")
-api_key = st.sidebar.text_input("Enter API Key", type="password")
+api_key = os.getenv("GEMINI_API_KEY")
 
 if not api_key:
-    st.info("Enter your Gemini API key to begin.")
+    st.error("API key not found. Please set GEMINI_API_KEY in Streamlit Secrets.")
     st.stop()
 
-client = genai.Client(api_key=api_key)
+genai.configure(api_key=api_key)
+
+# ============================================================
+# SAFE MODEL FUNCTION WITH FALLBACK
+# ============================================================
+
+def generate_response(prompt):
+    try:
+        model = genai.GenerativeModel("gemini-2.5-flash")
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception:
+        try:
+            fallback_model = genai.GenerativeModel("gemini-1.5-flash")
+            response = fallback_model.generate_content(prompt)
+            return response.text
+        except Exception as e:
+            return f"Error occurred: {str(e)}"
 
 # ============================================================
 # MODE SELECTION
@@ -179,15 +147,12 @@ Provide:
 """
 
         with st.spinner("Analyzing scenario..."):
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=prompt
-            )
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
 
 # ============================================================
-# PG TEACHING MODE
+# PG TEACHING MODE (WITH ANSWER BOX)
 # ============================================================
 
 elif mode == "PG Teaching Mode" and clinical_input:
@@ -200,17 +165,30 @@ Conduct postgraduate viva.
 Scenario:
 {clinical_input}
 
-Generate 3 structured probing questions.
-After PG answers, provide score out of 10.
+Generate 3 structured probing questions only.
 """
 
         with st.spinner("Preparing viva..."):
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=prompt
-            )
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
+
+        pg_answer = st.text_area("Enter PG Answers Here:")
+
+        if st.button("Evaluate PG Answers"):
+
+            eval_prompt = f"""
+Scenario:
+{clinical_input}
+
+PG Answers:
+{pg_answer}
+
+Evaluate and score out of 10 with feedback.
+"""
+
+            result = generate_response(eval_prompt)
+            st.markdown(result)
 
 # ============================================================
 # REFINEMENT MODE
@@ -233,12 +211,9 @@ Evaluate strengths, reasoning gaps, and rewrite to consultant level.
 """
 
         with st.spinner("Refining answer..."):
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=prompt
-            )
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
 
 # ============================================================
 # MCQ MODE
@@ -262,15 +237,12 @@ Each must include:
 """
 
         with st.spinner("Generating MCQs..."):
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=prompt
-            )
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
 
 # ============================================================
-# VIGNETTE MODE
+# CLINICAL VIGNETTE MODE (WITH ANSWER BOX)
 # ============================================================
 
 elif mode == "Clinical Vignette Mode" and clinical_input:
@@ -278,24 +250,35 @@ elif mode == "Clinical Vignette Mode" and clinical_input:
     if st.button("Start Vignette Simulation"):
 
         prompt = f"""
-Create interactive clinical vignette.
+Create an interactive clinical vignette.
 
 Scenario:
 {clinical_input}
 
-Pause after each step asking:
-"What would you do next?"
-
-Reveal reasoning progressively.
+End by asking: What would you do next?
 """
 
         with st.spinner("Simulating clinical pathway..."):
-            response = client.models.generate_content(
-                model="gemini-3-flash-preview",
-                contents=prompt
-            )
+            output = generate_response(prompt)
 
-        st.markdown(response.text)
+        st.markdown(output)
+
+        user_answer = st.text_area("Your Clinical Decision:")
+
+        if st.button("Reveal Analysis"):
+
+            analysis_prompt = f"""
+Scenario:
+{clinical_input}
+
+User Decision:
+{user_answer}
+
+Provide structured feedback and consultant-level reasoning.
+"""
+
+            result = generate_response(analysis_prompt)
+            st.markdown(result)
 
 # ============================================================
 # FOOTER
@@ -303,7 +286,7 @@ Reveal reasoning progressively.
 
 st.markdown("""
 <div class="footer">
-ASTRA - AI Clinical Intelligence Engine  
+ASTRA™ | AI Clinical Intelligence Engine  
 Educational Use Only | Does not replace clinical judgement
 </div>
 """, unsafe_allow_html=True)
