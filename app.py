@@ -12,7 +12,8 @@ if api_key:
 
     genai.configure(api_key=api_key)
 
-    model = genai.GenerativeModel("gemini-1.5-flash")
+    # Correct model name
+    model = genai.GenerativeModel("models/gemini-1.5-flash")
 
     mode = st.selectbox(
         "Choose Mode",
@@ -27,6 +28,10 @@ if api_key:
     user_input = st.text_area("Enter your query")
 
     if st.button("Generate Response"):
+
+        if not user_input.strip():
+            st.warning("Please enter a query.")
+            st.stop()
 
         if mode == "Consultant Mode":
 
